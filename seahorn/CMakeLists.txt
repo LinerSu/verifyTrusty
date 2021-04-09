@@ -266,4 +266,4 @@ add_subdirectory(trusty)
 
 add_subdirectory(storage)
 add_subdirectory(gatekeeper)
-# add_subdirectory(keymaster)
+add_subdirectory(keymaster)
