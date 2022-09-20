@@ -1,7 +1,8 @@
 # proof helpers
 add_library(sea_common_proofs
-  handle_table.c
+  # handle_table.c
   nondet.c
+  bounds.c
   bcmp.c
 )
 

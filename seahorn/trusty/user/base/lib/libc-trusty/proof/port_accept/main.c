@@ -1,6 +1,6 @@
+#include "sea_handle_table.h"
 #include <seahorn/seahorn.h>
 #include <trusty_ipc.h>
-
 /* Documentation from trusty API:
   accept()
 Accepts an incoming connection and gets a handle to a channel.
@@ -30,13 +30,17 @@ int main(void) {
                   IPC_PORT_ALLOW_NS_CONNECT | IPC_PORT_ALLOW_TA_CONNECT);
 
   // -- got expected handle
+  #ifdef __CRAB__
+  sassert(port);
+  #else
   sassert(port == 2);
+  #endif
 
   uuid_t peer_uuid;
   handle_t chan;
   chan = accept(port, &peer_uuid);
   assume(chan != INVALID_IPC_HANDLE);
-  sassert(chan == 16);
+  sassert(IS_CHAN_IPC_HANDLE(chan));
   sassert(is_uuid_all_zeros(&peer_uuid));
 
   rc = close(port);
@@ -47,11 +51,15 @@ int main(void) {
                   IPC_PORT_ALLOW_NS_CONNECT);
 
   // -- expected secure handle handle
+  #ifdef __CRAB__
+  sassert(port);
+  #else
   sassert(port == 1);
+  #endif
   
   chan = accept(port, &peer_uuid);
   assume(chan != INVALID_IPC_HANDLE);
-  sassert(chan == 17);
+  sassert(IS_CHAN_IPC_HANDLE(chan));
 
   return 0;
 }

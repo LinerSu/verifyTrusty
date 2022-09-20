@@ -22,10 +22,8 @@
 
 #include "ipc.h"
 
-#include "handle_table.h"
 #include "seahorn/seahorn.h"
 #include "sea_ipc_helper.h"
-#define assert sassert
 
 #include "tipc_limits.h"
 #include <interface/storage/storage.h>

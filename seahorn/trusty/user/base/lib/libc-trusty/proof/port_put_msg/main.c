@@ -1,3 +1,4 @@
+#include "sea_handle_table.h"
 #include <seahorn/seahorn.h>
 #include <trusty_ipc.h>
 #include <uapi/err.h>
@@ -20,7 +21,11 @@ int main(void) {
       port_create("ta.seahorn.com", 1, 100, IPC_PORT_ALLOW_TA_CONNECT);
 
   // expect non-secure handle
+  #ifdef __CRAB__
+  sassert(port);
+  #else
   sassert(port == 2);
+  #endif
 
   uevent_t event = {.handle = INVALID_IPC_HANDLE, .event = 0, .cookie = NULL};
 
@@ -37,15 +42,18 @@ int main(void) {
     if (event.event & IPC_HANDLE_POLL_READY) {
       handle_t chan = accept(port, &peer_uuid);
       assume(chan != INVALID_IPC_HANDLE);
-      sassert(chan == 16);
+      sassert(IS_CHAN_IPC_HANDLE(chan));
 
       uevent_t cev;
+      cev.handle = INVALID_IPC_HANDLE;
+      cev.event = 0;
+      cev.cookie = NULL;
 
       rc = wait(chan, &cev, INFINITE_TIME);
       sassert(rc <= NO_ERROR);
       if (rc == NO_ERROR) {
         if (cev.event & IPC_HANDLE_POLL_MSG) {
-          ipc_msg_info_t msg_info;
+          ipc_msg_info_t msg_info = {.len = 0, .id = 0, .num_handles = 0};
           rc = get_msg(chan, &msg_info);
           assume(rc == NO_ERROR);
           sassert(msg_info.id != 0);
@@ -53,9 +61,9 @@ int main(void) {
           uint8_t buf[MAX_ECHO_MSG_SIZE];
           struct iovec iov = {.iov_base = buf, .iov_len = sizeof(buf)};
           ipc_msg_t msg = {.num_iov = 1, .iov = &iov, .num_handles = 1, .handles = NULL};
-          rc = read_msg(chan, msg_info.id, 0, &msg);
-          assume(rc >= NO_ERROR);
-          sassert(rc <= MAX_ECHO_MSG_SIZE);
+          ssize_t r = read_msg(chan, msg_info.id, 0, &msg);
+          assume(r >= NO_ERROR);
+          sassert(r <= MAX_ECHO_MSG_SIZE);
 
           // discard msg
           rc = put_msg(chan, msg_info.id);

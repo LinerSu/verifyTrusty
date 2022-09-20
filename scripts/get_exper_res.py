@@ -9,7 +9,7 @@ from get_exper_brunch_stat import read_brunchstat_from_log, write_brunchstat_int
 
 BUILDABSPATH = os.path.abspath('../build/')
 DATAABSPATH = os.path.abspath('../') + "/data"
-SEAHORN_ROOT = '../../build-seahorn-rgn'  # Put your seahorn root dir here
+SEAHORN_ROOT = '../../build-seahorn'  # Put your seahorn root dir here
 FILE_DICT = {
     "": "seahorn.csv",
     "--vac": "seahorn(vac).csv",

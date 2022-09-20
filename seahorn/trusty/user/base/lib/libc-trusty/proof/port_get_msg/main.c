@@ -1,3 +1,4 @@
+#include "sea_handle_table.h"
 #include <seahorn/seahorn.h>
 #include <trusty_ipc.h>
 #include <uapi/err.h>
@@ -27,7 +28,11 @@ int main(void) {
       port_create("ta.seahorn.com", 1, 100, IPC_PORT_ALLOW_TA_CONNECT);
 
   // expect non-secure handle
+  #ifdef __CRAB__
+  sassert(port);
+  #else
   sassert(port == 2);
+  #endif
 
   uevent_t event = {.handle = INVALID_IPC_HANDLE, .event = 0, .cookie = NULL};
 
@@ -45,7 +50,7 @@ int main(void) {
       /* incoming connection: accept it */
       handle_t chan = accept(port, &peer_uuid);
       assume(chan != INVALID_IPC_HANDLE);
-      sassert(chan == 16);
+      sassert(IS_CHAN_IPC_HANDLE(chan));
 
       uevent_t cev;
 

@@ -7,6 +7,8 @@
 #include "sea_handle_table.h"
 #include <seahorn/seahorn.h>
 
+#include "ipc.h"
+
 #define ND __declspec(noalias)
 extern handle_t ND nd_handle(void);
 
@@ -14,17 +16,9 @@ extern handle_t ND nd_handle(void);
    ID DESCRIPTION
    1  port handle secure 1
    2  port handle non-secure 1
-   3  port handle secure 2
-   4  port handle non-secure 2
-   5  port handle secure 3
-   6  port handle non-secure 3
-   7  port handle secure 4
-   8  port handle non-secure 4
 
-   16 channel handle 1
-   17 channel handle 2
-   18 channel handle 3
-   19 channel handle 4
+   3 channel handle 1
+   4 channel handle 2
  */
 
 /** GLOBALS */
@@ -49,32 +43,35 @@ extern handle_t ND nd_handle(void);
 #define PHANDLE(ID, FLD) g_phandle##ID##_##FLD
 #define CHANDLE(ID, FLD) g_chandle##ID##_##FLD
 
+struct ipc_port_context g_port_ctx;
+struct ipc_channel_context g_chan_ctx;
+
 // -- number of active port handles
 unsigned g_active_phandles = 0;
 
 #define HANDLE_DEF(ID)                                                         \
   bool PHANDLE(ID, active) = false;                                            \
-  void *PHANDLE(ID, cookie) = NULL;                                            \
+  void *PHANDLE(ID, cookie) = NULL;                                     \
   char PHANDLE(ID, path) = '\0';
 
 // -- port handle 1
 HANDLE_DEF(1)
 // -- port handle 2
-HANDLE_DEF(2);
+HANDLE_DEF(2)
 
 // -- number of active channel handles
 unsigned g_active_chandles = 0;
 
 #define CHAN_DEF(ID)                                                           \
   bool CHANDLE(ID, active) = false;                                            \
-  void *CHANDLE(ID, cookie) = NULL;                                            \
+  void *CHANDLE(ID, cookie) = NULL;                                     \
   uint32_t CHANDLE(ID, msg_id) = 0;                                            \
   size_t CHANDLE(ID, msg_len) = 0;
 
 // -- channel handle 1
-CHAN_DEF(16)
+CHAN_DEF(3)
 // -- channel handle 2
-CHAN_DEF(17)
+CHAN_DEF(4)
 
 bool sea_ht_has_msg(handle_t chan_handle) {
 #define CASE(X)                                                                \
@@ -82,8 +79,8 @@ bool sea_ht_has_msg(handle_t chan_handle) {
     return CHANDLE(X, msg_id) > 0;
 
   switch (chan_handle) {
-    CASE(16);
-    CASE(17);
+    CASE(3);
+    CASE(4);
   }
   return false;
 }
@@ -93,8 +90,8 @@ uint32_t sea_ht_get_msg_id(handle_t chan_handle) {
   case X:                                                                      \
     return CHANDLE(X, msg_id);
   switch (chan_handle) {
-    CASE(16);
-    CASE(17);
+    CASE(3);
+    CASE(4);
   }
   return 0;
 }
@@ -105,8 +102,8 @@ void sea_ht_set_msg_id(handle_t chan_handle, uint32_t id) {
     CHANDLE(X, msg_id) = id;                                                   \
     return;
   switch (chan_handle) {
-    CASE(16);
-    CASE(17);
+    CASE(3);
+    CASE(4);
   }
 }
 
@@ -115,8 +112,8 @@ size_t sea_ht_get_msg_len(handle_t chan_handle) {
   case X:                                                                      \
     return CHANDLE(X, msg_len);
   switch (chan_handle) {
-    CASE(16);
-    CASE(17);
+    CASE(3);
+    CASE(4);
   }
   return 0;
 }
@@ -127,8 +124,8 @@ void sea_ht_set_msg_len(handle_t chan_handle, size_t len) {
     CHANDLE(X, msg_len) = len;                                                 \
     return;
   switch (chan_handle) {
-    CASE(16);
-    CASE(17);
+    CASE(3);
+    CASE(4);
   }
 }
 
@@ -143,8 +140,8 @@ void sea_ht_new_nd_msg(handle_t chan_handle) {
     return;
 
   switch (chan_handle) {
-    CASE(16);
-    CASE(17);
+    CASE(3);
+    CASE(4);
   }
 }
 
@@ -186,8 +183,8 @@ void sea_ht_free(handle_t handle) {
   switch (handle) {
     CASE(1);
     CASE(2);
-    CCASE(16);
-    CCASE(17);
+    CCASE(3);
+    CCASE(4);
   }
 }
 
@@ -231,23 +228,39 @@ handle_t sea_ht_math_port(const char *path) {
 handle_t sea_ht_choose_active_handle(void) {
 #define CASE(X)                                                                \
   case X:                                                                      \
-    assume(PHANDLE(X, active));                                                \
-    return X;
+    if (PHANDLE(X, active))                                                    \
+      return X;
 #define CCASE(X)                                                               \
   case X:                                                                      \
-    assume(CHANDLE(X, active));                                                \
-    return X;
+    if (CHANDLE(X, active))                                                    \
+      return X;
 
   handle_t v = nd_handle();
+#ifdef __CRAB__
+  if (v <= PORT_HANDLE_MAX) {
+    assume(PORT_HANDLE_MIN <= v && v <= PORT_HANDLE_MAX);
+    switch (v) {
+      CASE(1);
+      CASE(2);
+    }
+  } else {
+    assume(CHAN_HANDLE_MIN <= v && v <= CHAN_HANDLE_MAX);
+    switch (v) {
+      CCASE(3);
+      CCASE(4);
+    }
+  }
+#else
   assume((PORT_HANDLE_MIN <= v && v <= PORT_HANDLE_MAX) ||
          (CHAN_HANDLE_MIN <= v && v <= CHAN_HANDLE_MAX));
-
   switch (v) {
     CASE(1);
     CASE(2);
-    CCASE(16);
-    CCASE(17);
+    CCASE(3);
+    CCASE(4);
   }
+#endif
+
   return INVALID_IPC_HANDLE;
 }
 
@@ -256,8 +269,8 @@ static handle_t s_first_available_channel_handle(void) {
   if (!CHANDLE(X, active))                                                     \
     return X;
 
-  CASE(16);
-  CASE(17);
+  CASE(3);
+  CASE(4);
 
   // ...
   return INVALID_IPC_HANDLE;
@@ -274,8 +287,8 @@ handle_t sea_ht_new_channel(handle_t parent_port) {
     return h;
   g_active_chandles++;
   switch (h) {
-    CASE(16)
-    CASE(17)
+    CASE(3)
+    CASE(4)
   }
   return INVALID_IPC_HANDLE;
 }
@@ -323,8 +336,8 @@ void sea_ht_set_cookie_channel(handle_t handle, void *cookie) {
     break;
 
   switch (handle) {
-    CASE(16);
-    CASE(17);
+    CASE(3);
+    CASE(4);
   }
 }
 
@@ -334,8 +347,8 @@ void *sea_ht_get_cookie_channel(handle_t handle) {
     return CHANDLE(X, cookie);
 
   switch (handle) {
-    CASE(16);
-    CASE(17);
+    CASE(3);
+    CASE(4);
   }
   return NULL;
 }

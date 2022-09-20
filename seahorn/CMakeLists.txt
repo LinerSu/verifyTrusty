@@ -171,6 +171,10 @@ function(sea_attach_bc name)
   target_compile_options(${SOURCE_EXE} PUBLIC -g)
   target_compile_options(${SOURCE_EXE} PUBLIC -fdeclspec)
   target_compile_options(${SOURCE_EXE} PUBLIC -Wstrict-prototypes -Wwrite-strings)
+  # do not override memcpy/memmove, we provide our own wrappers
+  if (NOT SEA_LLVM_MEM_BUILTINS)
+    target_compile_options(${SOURCE_EXE} PUBLIC -fno-builtin-memcpy -fno-builtin-memmove)
+  endif()
 
   # work-around for Mac
   if (NOT APPLE)
@@ -181,13 +185,17 @@ function(sea_attach_bc name)
     target_compile_options(${SOURCE_EXE} PRIVATE -mfloat-abi=softfp
     -fstack-protector-strong -mthumb
     )
+    target_include_directories(${SOURCE_EXE} PRIVATE ${TRUSTY_ROOT}/external/lk/arch/arm/include)
     target_compile_definitions(${SOURCE_EXE} PRIVATE __thumb__)
   elseif(${TRUSTY_TARGET} STREQUAL "x86_64")
     target_compile_options(${SOURCE_EXE} PRIVATE -mcmodel=kernel -mno-red-zone -msoft-float
-    -fno-pic -ffunction-sections -fdata-sections -fno-stack-protector -fasynchronous-unwind-tables )
+    -fno-pic -ffunction-sections -fdata-sections -fno-stack-protector -fasynchronous-unwind-tables)
+    target_compile_options(${SOURCE_EXE} PRIVATE -DARCH_X86_64=1 -DIS_64BIT=1)
+    target_include_directories(${SOURCE_EXE} PRIVATE ${TRUSTY_ROOT}/external/lk/arch/x86/include)
   else ()
   target_compile_options(${SOURCE_EXE} PRIVATE
   -fno-short-enums -fno-common -fno-omit-frame-pointer -ffixed-x18 -ffunction-sections -fdata-sections -fno-stack-protector -fasynchronous-unwind-tables )
+  target_include_directories(${SOURCE_EXE} PRIVATE ${TRUSTY_ROOT}/external/lk/arch/arm64/include)
   endif()
   set_property(TARGET ${SOURCE_EXE} PROPERTY EXCLUDE_FROM_ALL ON)
 
@@ -259,14 +267,20 @@ endfunction()
 
 # Set upper bound on data structures
 set(MSG_BUF_MAX_SIZE 4096)
+set(MAX_STRING_LEN 10)
+set(MAX_BUFFER_SIZE 10)
 
 # Compile-time definitions
 add_definitions(
   -DMSG_BUF_MAX_SIZE=${MSG_BUF_MAX_SIZE}
+  -DMAX_STRING_LEN=${MAX_STRING_LEN}
+  -DMAX_BUFFER_SIZE=${MAX_BUFFER_SIZE}
 )
 
+configure_file(trusty_common/include/config.h.in ${PROJECT_BINARY_DIR}/include/config.h)
 configure_file(sea.yaml sea.yaml @ONLY)
 configure_file(sea_cex_base.yaml sea.cex.yaml @ONLY)
+configure_file(sea_crab_base.yaml sea.crab.yaml @ONLY)
 configure_file(sea_vac.yaml sea.vac.yaml @ONLY)
 
 add_subdirectory(trusty_common)

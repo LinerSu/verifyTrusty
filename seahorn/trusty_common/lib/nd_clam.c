@@ -24,6 +24,7 @@ extern uint16_t NONDET_FN_ATTR nd_time_hi_n_ver(void);
 
 extern int NONDET_FN_ATTR nd_trusty_ipc_err(void);
 extern uint32_t nd_trusty_ipc_event(void);
+extern void *nd_voidp(void);
 
 bool nd_malloc_is_fail(void) {
   // make assumption for crab
@@ -62,7 +63,7 @@ uint64_t nd_uint64_t(void) {
 }
 
 handle_t nd_handle(void) {
-  return nd_int32_t();
+  return nd_voidp();
 }
 
 uint32_t nd_time_low(void) {

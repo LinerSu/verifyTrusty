@@ -4,13 +4,14 @@
 #include <stdbool.h>
 #include <trusty_ipc.h>
 
+#ifndef __CRAB__
 // TODO: increase number of handles as needed
 #define PORT_HANDLE_MIN 1
 #define PORT_HANDLE_MAX 2
 
 // TODO: increase number of channels as needed
-#define CHAN_HANDLE_MIN 16
-#define CHAN_HANDLE_MAX 17
+#define CHAN_HANDLE_MIN 3
+#define CHAN_HANDLE_MAX 4
 
 #define IS_PORT_IPC_HANDLE(h) (PORT_HANDLE_MIN <= h && h <= PORT_HANDLE_MAX)
 #define IS_CHAN_IPC_HANDLE(h) (!IS_PORT_IPC_HANDLE(h))
@@ -18,6 +19,7 @@
 #define IS_NONSECURE_IPC_HANDLE(h) (!IS_SECURE_HANDLE(h))
 
 #define INVALID_IPC_MSG_ID 0
+#define MAX_IPC_MSG_NUM 10
 
 handle_t sea_ht_new_port(bool secure, const char *path);
 handle_t sea_ht_new_channel(handle_t port);
@@ -45,4 +47,7 @@ void sea_ht_set_msg_len(handle_t chan_handle, size_t len);
 void sea_ht_new_nd_msg(handle_t chan_handle);
 
 handle_t sea_ht_math_port(const char *path);
+#else
+#include "crab_handle_table.h"
+#endif
 #endif

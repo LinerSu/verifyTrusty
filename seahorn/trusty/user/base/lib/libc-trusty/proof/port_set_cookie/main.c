@@ -24,10 +24,14 @@ int main(void) {
       port_create("ta.seahorn.com", 1, 100, IPC_PORT_ALLOW_TA_CONNECT);
 
   // expect non-secure handle
+  #ifdef __CRAB__
+  sassert(port);
+  #else
   sassert(port == 2);
+  #endif
 
   uevent_t event;
-  handle_t rc;
+  int rc;
 
   rc = set_cookie(port, &port_evt_handler);
   sassert(rc == 0);

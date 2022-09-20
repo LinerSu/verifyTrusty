@@ -18,38 +18,48 @@
 #include <stdlib.h>
 #include <trusty_ipc.h>
 #include <trusty_log.h>
+#include <tipc_ns.h>
+#include <rpmb.h>
 #include <uapi/err.h>
 
 #include "ipc.h"
 
-#include "handle_table.h"
 #include "seahorn/seahorn.h"
 #include "sea_ipc_helper.h"
+#include "sea_handle_table.h"
 #define assert sassert
 
 #include "tipc_limits.h"
 #include <interface/storage/storage.h>
+#include <nondet.h>
+#include <bounds.h>
 
 /**
    entry point
 */
 int main(void) {
-    handle_table_init(INVALID_IPC_HANDLE, INVALID_IPC_HANDLE, INVALID_IPC_HANDLE);
-    struct ipc_port_context* ctx = create_port_context();
-    int rc = ipc_port_create(
-            ctx, STORAGE_DISK_PROXY_PORT, 1, STORAGE_MAX_BUFFER_SIZE,
-            IPC_PORT_ALLOW_TA_CONNECT | IPC_PORT_ALLOW_NS_CONNECT);
 
-    if (rc < 0) {
-        return rc;
-    }
+  /* server side */
+  handle_t port =
+      port_create("ta.seahorn.com", 1, 100, IPC_PORT_ALLOW_TA_CONNECT);
 
-    // sassert(contains_handle(ctx.common.handle));
+  // expect non-secure handle
+  sassert(IS_PORT_IPC_HANDLE(port));
 
-    ipc_loop();
+  /* client side */
+  handle_t c_chan;
+  c_chan = connect("ta.seahorn.com", IPC_CONNECT_ASYNC | IPC_CONNECT_WAIT_FOR_PORT);
+  // check if use a valid connection
+  sassert(IS_CHAN_IPC_HANDLE(c_chan));
 
-    ipc_port_destroy(ctx);
-    // sassert(!contains_handle(ctx.common.handle));
+  size_t fname_len = nd_size_t();
+  assume(fname_len > 0);
+  assume(fname_len < sea_max_string_len());
+  char *fname = malloc(fname_len * sizeof(char));
+  fname[fname_len - 1] = '\0';
 
-    return 0;
+  ns_handle_t handle;
+  ns_open_file(c_chan, "test", &handle, nd_bool());
+
+  return 0;
 }
